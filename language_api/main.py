@@ -7,9 +7,6 @@ from flask import Flask, redirect, render_template, request
 from google.cloud import datastore
 from google.cloud import language_v1 as language
 
-
-
-
 app = Flask(__name__)
 
 
@@ -73,6 +70,11 @@ def upload_text():
     return redirect("/")
 
 
+@app.route("/analyze/<text>")
+def analyze(text):
+    return analyze_text_sentiment(text)
+
+
 @app.errorhandler(500)
 def server_error(e):
     logging.exception("An error occurred during a request.")
@@ -85,6 +87,8 @@ def server_error(e):
         ),
         500,
     )
+
+
 def analyze_text_sentiment(text):
     client = language.LanguageServiceClient()
     document = language.Document(content=text, type_=language.Document.Type.PLAIN_TEXT)
@@ -97,16 +101,21 @@ def analyze_text_sentiment(text):
         score=f"{sentiment.score:.1%}",
         magnitude=f"{sentiment.magnitude:.1%}",
     )
-    for k, v in results.items():
-        print(f"{k:10}: {v}")
+    return results
 
+
+def analyze_text_sentence_sentiment(text):
     # Get sentiment for all sentences in the document
+    client = language.LanguageServiceClient()
+    document = language.Document(content=text, type_=language.Document.Type.PLAIN_TEXT)
+
+    response = client.analyze_sentiment(document=document)
     sentence_sentiment = []
     for sentence in response.sentences:
-        item={}
-        item["text"]=sentence.text.content
-        item["sentiment score"]=sentence.sentiment.score
-        item["sentiment magnitude"]=sentence.sentiment.magnitude
+        item = {}
+        item["text"] = sentence.text.content
+        item["sentiment score"] = sentence.sentiment.score
+        item["sentiment magnitude"] = sentence.sentiment.magnitude
         sentence_sentiment.append(item)
 
     return sentence_sentiment
